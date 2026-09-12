@@ -9,6 +9,8 @@ export async function POST(request: Request) {
   try {
     const input = placementSchema.parse(await body(request));
     const result = await createPlacement(repository(), input);
-    return Response.json({ ok: true, ...result, deepLink: buildDeepLink(process.env.BOT_USERNAME ?? "", result.trackingToken) });
+    const botUsername = process.env.BOT_USERNAME?.trim();
+    if (!botUsername) throw new Error("BOT_USERNAME не задан");
+    return Response.json({ ok: true, ...result, deepLink: buildDeepLink(botUsername, result.trackingToken) });
   } catch (error) { return jsonError(error); }
 }

@@ -55,18 +55,26 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     user = update.effective_user
     uk = tracking.user_key_from_telegram_id(user.id)
+    touch = db.latest_touch(uk)
+    course = touch.get("target_course") if touch else None
     if q.data == "learn":
-        lead_id = db.add_lead(uk, course=None)
-        await q.edit_message_text(f"Записал тебя как лид #{lead_id}. Курс уточним.")
+        lead_id = db.add_lead(uk, course=course)
+        label = f" к курсу «{course}»" if course else ""
+        await q.edit_message_text(f"Записал тебя как лид #{lead_id}{label}.")
     elif q.data == "manager":
-        await q.edit_message_text("Передал запрос менеджеру.")
+        lead_id = db.add_lead(uk, course=course)
+        await q.edit_message_text(
+            f"Интерес сохранён как лид #{lead_id}. Контакт менеджера "
+            "появится после подключения CRM."
+        )
 
 
 def main():
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
-        log.warning("TELEGRAM_BOT_TOKEN не задан — бот не запущен.")
-        return
+        raise RuntimeError("TELEGRAM_BOT_TOKEN is required")
+    if not os.environ.get("USER_HASH_SECRET", "").strip():
+        raise RuntimeError("USER_HASH_SECRET is required")
     db.init_db()
     app = ApplicationBuilder().token(token).build()
     app.add_handler(CommandHandler("start", start))

@@ -80,6 +80,9 @@ def init_db():
                 "Run Docker Compose with sql/init mounted into "
                 "/docker-entrypoint-initdb.d or apply the migrations manually."
             )
+        cur.execute(
+            "ALTER TABLE touches ALTER COLUMN activity_id DROP NOT NULL"
+        )
 
 
 def _ensure_course(cur, course_name: str | None):
@@ -546,7 +549,11 @@ def add_touch(
             create=True,
             data_origin=data_origin,
         )
-        activity_id = _resolve_activity_id(cur, placement_id)
+        activity_id = (
+            _resolve_activity_id(cur, placement_id)
+            if placement_id
+            else None
+        )
         tracking_method = confidence or "unknown"
         confidence_score = _CONFIDENCE_SCORE.get(
             tracking_method,
@@ -580,6 +587,34 @@ def add_touch(
         return cur.fetchone()["touch_id"]
 
 
+def latest_touch(user_key):
+    """Return the latest touch, including an optional placement/course."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                t.touch_id,
+                ma.source_activity_key AS placement_id,
+                ma.course_target_text AS target_course,
+                t.touched_at,
+                t.tracking_method AS confidence
+            FROM touches t
+            JOIN users u ON u.user_id = t.user_id
+            JOIN user_identities ui
+              ON ui.user_id = u.user_id
+             AND ui.identity_type = 'telegram_hash'
+             AND ui.identity_value = %s
+            LEFT JOIN marketing_activities ma
+              ON ma.activity_id = t.activity_id
+            ORDER BY t.touched_at DESC, t.touch_id DESC
+            LIMIT 1
+            """,
+            (user_key,),
+        )
+        row = cur.fetchone()
+    return dict(row) if row else None
+
+
 def list_touches():
     identity_expr = _identity_sql("u")
     with get_conn() as conn, conn.cursor() as cur:
@@ -595,7 +630,7 @@ def list_touches():
             FROM touches t
             JOIN users u
               ON u.user_id = t.user_id
-            JOIN marketing_activities ma
+            LEFT JOIN marketing_activities ma
               ON ma.activity_id = t.activity_id
             ORDER BY t.touched_at DESC
             """
@@ -627,6 +662,22 @@ def add_lead(
             data_origin=data_origin,
         )
         course_id = _ensure_course(cur, course)
+
+        cur.execute(
+            """
+            SELECT lead_id
+            FROM leads
+            WHERE user_id = %s
+              AND status = 'new'
+              AND course_id IS NOT DISTINCT FROM %s
+            ORDER BY lead_id DESC
+            LIMIT 1
+            """,
+            (user_id, course_id),
+        )
+        existing = cur.fetchone()
+        if existing:
+            return existing["lead_id"]
 
         cur.execute(
             """

@@ -32,6 +32,22 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      POSTGRES_PORT: 5432
+    command: ["python", "src/bot.py"]
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
 
   loader:
     build:

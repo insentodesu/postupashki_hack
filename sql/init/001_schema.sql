@@ -89,7 +89,7 @@ CREATE TABLE touches (
     user_id BIGINT NOT NULL
         REFERENCES users(user_id)
         ON DELETE CASCADE,
-    activity_id BIGINT NOT NULL
+    activity_id BIGINT
         REFERENCES marketing_activities(activity_id)
         ON DELETE CASCADE,
     touched_at TIMESTAMPTZ NOT NULL,

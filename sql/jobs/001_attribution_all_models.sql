@@ -35,6 +35,7 @@ WITH eligible_touches AS (
       ON t.user_id = o.user_id
     WHERE t.touched_at <= o.ordered_at
       AND t.touched_at >= o.ordered_at - INTERVAL '30 days'
+      AND t.activity_id IS NOT NULL
 )
 INSERT INTO attributions (
     order_id,
@@ -76,6 +77,7 @@ WITH eligible_touches AS (
       ON t.user_id = o.user_id
     WHERE t.touched_at <= o.ordered_at
       AND t.touched_at >= o.ordered_at - INTERVAL '30 days'
+      AND t.activity_id IS NOT NULL
 )
 INSERT INTO attributions (
     order_id,
@@ -123,6 +125,7 @@ WITH eligible_touches AS (
       ON t.user_id = o.user_id
     WHERE t.touched_at <= o.ordered_at
       AND t.touched_at >= o.ordered_at - INTERVAL '30 days'
+      AND t.activity_id IS NOT NULL
 ),
 linear_split AS (
     SELECT
