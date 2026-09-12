@@ -26,6 +26,7 @@ export interface Repository {
   latestTouch(userKey: string): Promise<Touch | null>;
   upsertOpenLead(userKey: string, course: string | null, origin: DataOrigin): Promise<number>;
   insertOrder(input: OrderInput): Promise<number | null>;
+  insertOrders(inputs: OrderInput[]): Promise<{ imported: number; skipped: number }>;
   replaceAttributions(items: AttributionResult[]): Promise<void>;
   dashboardSnapshot(): Promise<DashboardSnapshot>;
   claimTelegramUpdate(updateId: number): Promise<boolean>;
@@ -99,6 +100,22 @@ export class MemoryRepository implements Repository {
     const orderId = this.orders.length + 1;
     this.orders.push({ ...input, orderId });
     return orderId;
+  }
+
+  async insertOrders(inputs: OrderInput[]) {
+    let imported = 0;
+    let skipped = 0;
+    for (const input of inputs) {
+      if (input.userKey) this.users.add(input.userKey);
+      if (input.externalId && this.orders.some((row) => row.externalId === input.externalId)) {
+        skipped += 1;
+        continue;
+      }
+      const orderId = this.orders.length + 1;
+      this.orders.push({ ...input, orderId });
+      imported += 1;
+    }
+    return { imported, skipped };
   }
 
   async replaceAttributions(items: AttributionResult[]) { this.attributions = [...items]; }
@@ -241,19 +258,66 @@ export function postgresRepository(): Repository {
       );
       return result.rows[0] ? number(result.rows[0].order_id) : null;
     },
+    async insertOrders(inputs) {
+      if (!inputs.length) return { imported: 0, skipped: 0 };
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const userKeys = [...new Set(inputs.flatMap((input) => input.userKey ? [input.userKey] : []))];
+        if (userKeys.length) {
+          await client.query(
+            `INSERT INTO users (user_key)
+             SELECT user_key FROM unnest($1::text[]) AS input(user_key)
+             ON CONFLICT DO NOTHING`,
+            [userKeys],
+          );
+        }
+        const rows = inputs.map((input) => ({
+          user_key: input.userKey,
+          external_id: input.externalId ?? null,
+          course: input.course,
+          amount: input.amount,
+          ts: input.ts,
+          source_file: input.sourceFile ?? null,
+          order_reconstruction_rule: input.reconstructionRule ?? null,
+          order_confidence: input.orderConfidence ?? null,
+          data_origin: input.dataOrigin,
+        }));
+        const result = await client.query(
+          `INSERT INTO orders (user_key,external_id,course,amount,ts,source_file,order_reconstruction_rule,order_confidence,data_origin)
+           SELECT user_key,external_id,course,amount,ts,source_file,order_reconstruction_rule,order_confidence,data_origin
+           FROM jsonb_to_recordset($1::jsonb) AS imported(
+             user_key text, external_id text, course text, amount numeric, ts timestamptz,
+             source_file text, order_reconstruction_rule text, order_confidence text, data_origin text
+           )
+           ON CONFLICT (external_id) DO NOTHING
+           RETURNING order_id`,
+          [JSON.stringify(rows)],
+        );
+        await client.query("COMMIT");
+        const imported = result.rows.length;
+        return { imported, skipped: inputs.length - imported };
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
     async replaceAttributions(items) {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
         await client.query("DELETE FROM attributions");
-        for (const item of items) {
-          await client.query(
-            `INSERT INTO attributions (order_id,placement_id,attribution_method,confidence,revenue_credit,window_days)
-             VALUES ($1,$2,$3,$4,$5,$6)`,
-            [item.orderId, item.placementId, item.attributionMethod, item.confidence,
-              item.revenueCredit, item.windowDays],
-          );
-        }
+        await client.query(
+          `INSERT INTO attributions (order_id,placement_id,attribution_method,confidence,revenue_credit,window_days)
+           SELECT order_id,placement_id,attribution_method,confidence,revenue_credit,window_days
+           FROM jsonb_to_recordset($1::jsonb) AS attribution(
+             order_id bigint, placement_id text, attribution_method text, confidence text,
+             revenue_credit numeric, window_days integer
+           )`,
+          [JSON.stringify(items)],
+        );
         await client.query("COMMIT");
       } catch (error) {
         await client.query("ROLLBACK");
