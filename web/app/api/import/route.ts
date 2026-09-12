@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   try {
     const file = (await request.formData()).get("file");
     if (!(file instanceof File)) throw new Error("Выберите Excel-файл");
-    if (file.size > 10 * 1024 * 1024) throw new Error("Максимальный размер файла — 10 МБ");
+    if (file.size > 10 * 1024 * 1024) throw new Error("Максимальный размер файла: 10 МБ");
     const repo = repository();
     const orders = await parseSalesWorkbook(await file.arrayBuffer(), process.env.USER_HASH_SECRET ?? "");
     const result = await importSales(repo, orders);

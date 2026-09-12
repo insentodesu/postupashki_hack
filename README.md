@@ -62,6 +62,10 @@ Postgres. Route Handlers принимают кампании, placements, имп
 воспроизводимым fallback для локального запуска и VPS: Streamlit, PostgreSQL,
 Excel-loader и long-polling bot используют одну базу.
 
+Самый простой запуск описан в [DEPLOY.md](DEPLOY.md). Достаточно заполнить
+`.env` и выполнить `./deploy.sh`: скрипт проверит секреты, соберёт контейнеры,
+дождётся healthcheck панели и покажет адрес приложения.
+
 ```bash
 cp .env.example .env
 # Заполните TELEGRAM_BOT_TOKEN, BOT_USERNAME и USER_HASH_SECRET

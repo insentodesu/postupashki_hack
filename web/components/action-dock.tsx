@@ -16,15 +16,15 @@ export function ActionDock({ campaigns, placements }: { campaigns: Campaign[]; p
     try {
       const response = await fetch(endpoints[action], { method: "POST", ...(action === "import" ? { body: payload as FormData } : { headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error ?? "Действие не выполнено");
-      setMessage(result.deepLink ? `Готово: ${result.deepLink}` : action === "import" ? `Импортировано: ${result.imported}, пропущено: ${result.skipped}` : "Готово — данные и атрибуция обновлены.");
+      setMessage(result.deepLink ? `Готово: ${result.deepLink}` : action === "import" ? `Импортировано: ${result.imported}, пропущено: ${result.skipped}` : "Готово. Данные и атрибуция обновлены.");
       form.reset(); router.refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Не удалось выполнить действие"); }
     finally { setPending(false); }
   }
   return <section className="action-dock" aria-labelledby="action-title">
-    <div className="section-heading"><div><span className="eyebrow">Рабочая зона</span><h2 id="action-title">Добавить факт в цепочку</h2></div><span className="section-note">Все изменения пересчитывают отчёт</span></div>
-    <div className="action-layout"><div className="action-tabs" role="tablist" aria-label="Выберите действие">
-      {([['campaign','Кампания'],['placement','Размещение'],['payment','Оплата'],['simulate','Симуляция'],['import','Импорт Excel']] as [Action,string][]).map(([id,label]) => <button key={id} type="button" role="tab" aria-controls="action-form" aria-selected={action === id} className={action === id ? "is-active" : ""} onClick={() => { setAction(id); setMessage(""); }}>{label}</button>)}
+    <div className="section-heading"><div><h2 id="action-title">Добавить факт в цепочку</h2></div><span className="section-note">Все изменения пересчитывают отчёт</span></div>
+    <div className="action-layout"><div className="action-tabs" role="group" aria-label="Выберите действие">
+      {([['campaign','Кампания'],['placement','Размещение'],['payment','Оплата'],['simulate','Симуляция'],['import','Импорт Excel']] as [Action,string][]).map(([id,label]) => <button key={id} type="button" aria-controls="action-form" aria-pressed={action === id} className={action === id ? "is-active" : ""} onClick={() => { setAction(id); setMessage(""); }}>{label}</button>)}
     </div><form id="action-form" className="action-form" onSubmit={submit} autoComplete="off">
       {action === "campaign" && <><label>Название<input name="name" required minLength={2} placeholder="Например, осенний набор…" /></label><label>Целевой курс<input name="targetCourse" placeholder="Например, Python-разработчик…" /></label><label>Бюджет, ₽<input name="budget" type="number" min="0" step="100" placeholder="25 000…" /></label><input type="hidden" name="dataOrigin" value="real" /></>}
       {action === "placement" && <><label>Кампания<select name="campaignId" required defaultValue=""><option value="" disabled>Выберите кампанию</option>{campaigns.map(c => <option key={c.campaignId} value={c.campaignId}>{c.name}</option>)}</select></label><label>Канал<input name="channel" required placeholder="Например, Telegram…" /></label><label>Стоимость, ₽<input name="cost" type="number" min="0" step="100" required placeholder="10 000…" /></label><label>Курс<input name="targetCourse" placeholder="Например, Python-разработчик…" /></label><input type="hidden" name="dataOrigin" value="real" /></>}

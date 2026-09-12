@@ -1,6 +1,6 @@
 """
 Tracking bot. /start <token> создаёт deterministic touch.
-Без TELEGRAM_BOT_TOKEN не запускается — используйте offline simulation в дашборде.
+Без TELEGRAM_BOT_TOKEN не запускается. Используйте offline simulation в дашборде.
 """
 import logging
 import os
@@ -33,7 +33,7 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 f"Курс: {course}.")
     else:
         db.add_touch(uk, None, source="organic", confidence="unknown")
-        text = "Привет! Ты пришёл без трекинговой ссылки — источник неизвестен."
+        text = "Привет! Ты пришёл без трекинговой ссылки, источник неизвестен."
 
     kb = InlineKeyboardMarkup([[
         InlineKeyboardButton("Узнать про курс", callback_data="learn"),
@@ -47,7 +47,7 @@ async def lead(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     uk = tracking.user_key_from_telegram_id(user.id)
     course = " ".join(ctx.args) if ctx.args else None
     lead_id = db.add_lead(uk, course=course)
-    await update.message.reply_text(f"Лид #{lead_id} создан. Курс: {course or '—'}")
+    await update.message.reply_text(f"Лид #{lead_id} создан. Курс: {course or 'не указан'}")
 
 
 async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

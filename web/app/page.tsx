@@ -12,7 +12,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   let snapshot = demoSnapshot; let connected = false; let warning: string | null = null;
   if (process.env.DATABASE_URL) {
     try { snapshot = await postgresRepository().dashboardSnapshot(); connected = true; }
-    catch { warning = "База временно недоступна — показываем безопасный демо-срез."; }
+    catch { warning = "База временно недоступна. Показываем безопасный демо-срез."; }
   }
   const origins = new Set(["real", "synthetic", "demo"]);
   const origin = origins.has(query.origin ?? "") ? query.origin! : "all";
