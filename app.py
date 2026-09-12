@@ -90,46 +90,27 @@ def bust_cache() -> None:
 
 
 # ============================================================
-# UI-level write helpers (db.py не трогаем)
+# UI-level write helpers -> PostgreSQL adapter
 # ============================================================
 
 def update_campaign(campaign_id: str, **fields) -> None:
-    if not fields:
-        return
-    sets = ", ".join(f"{k} = ?" for k in fields)
-    vals = list(fields.values()) + [campaign_id]
-    with db.get_conn() as c:
-        c.execute(f"UPDATE campaigns SET {sets} WHERE campaign_id = ?", vals)
+    db.update_campaign(campaign_id, **fields)
 
 
 def delete_campaign(campaign_id: str) -> None:
-    with db.get_conn() as c:
-        c.execute("DELETE FROM placements WHERE campaign_id = ?", (campaign_id,))
-        c.execute("DELETE FROM campaigns WHERE campaign_id = ?", (campaign_id,))
+    db.delete_campaign(campaign_id)
 
 
 def update_placement(placement_id: str, **fields) -> None:
-    if not fields:
-        return
-    sets = ", ".join(f"{k} = ?" for k in fields)
-    vals = list(fields.values()) + [placement_id]
-    with db.get_conn() as c:
-        c.execute(f"UPDATE placements SET {sets} WHERE placement_id = ?", vals)
+    db.update_placement(placement_id, **fields)
 
 
 def delete_placement(placement_id: str) -> None:
-    """Удаляем размещение, но touches сохраняем — обнуляем ссылку."""
-    with db.get_conn() as c:
-        c.execute("UPDATE touches SET placement_id = NULL WHERE placement_id = ?",
-                  (placement_id,))
-        c.execute("DELETE FROM placements WHERE placement_id = ?", (placement_id,))
+    db.delete_placement(placement_id)
 
 
 def clear_all_data() -> None:
-    with db.get_conn() as c:
-        for t in ("attributions", "orders", "leads", "touches",
-                  "users", "placements", "campaigns"):
-            c.execute(f"DELETE FROM {t}")
+    db.clear_all_data()
 
 
 # ============================================================
