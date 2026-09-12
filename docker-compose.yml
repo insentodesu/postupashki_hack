@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16
+    container_name: postupashki_hack_postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+    ports:
+      - "${APP_PORT:-8501}:8501"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  loader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles:
+      - tools
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      SALES_FILE: /app/data/base.xlsx
+      MARKETING_FILE: /app/data/marketing_posts.csv
+    volumes:
+      - ./data:/app/data:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
