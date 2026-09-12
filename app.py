@@ -15,6 +15,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from io import BytesIO
 from pathlib import Path
+import os
 import sys
 import tempfile
 
@@ -416,8 +417,11 @@ def _links_section() -> None:
         return
 
     bot_username = st.text_input(
-        "Bot username", value="postupashki_tracking_bot",
+        "Bot username", value=os.getenv("BOT_USERNAME", "").strip(),
         help="Без @. Используется для сборки t.me/...?start=<token>")
+    if not bot_username:
+        st.warning("Укажите BOT_USERNAME в окружении, чтобы сгенерировать рабочие ссылки.")
+        return
 
     for p in placements:
         link = tracking.build_deeplink(bot_username, p["tracking_token"])

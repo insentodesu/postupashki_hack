@@ -1,6 +1,12 @@
 -- Application compatibility fields for the existing Streamlit UI.
 BEGIN;
 
+-- Organic/unknown touches have no marketing activity. Keep the relationship
+-- nullable so a Telegram /start without a valid placement is still recorded
+-- without inventing an advertising source.
+ALTER TABLE touches
+    ALTER COLUMN activity_id DROP NOT NULL;
+
 ALTER TABLE campaigns
     ADD COLUMN IF NOT EXISTS objective TEXT,
     ADD COLUMN IF NOT EXISTS target_course_text TEXT,

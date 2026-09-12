@@ -28,5 +28,5 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
       attributions: snapshot.attributions.filter((item) => orderIds.has(item.orderId)),
     };
   }
-  return <DashboardShell snapshot={snapshot} view={query.view ?? "overview"} origin={origin} connected={connected} warning={warning} botUsername={process.env.BOT_USERNAME ?? "postupashki_demo_bot"} />;
+  return <DashboardShell snapshot={snapshot} view={query.view ?? "overview"} origin={origin} connected={connected} warning={warning} botUsername={process.env.BOT_USERNAME?.trim() ?? ""} />;
 }
