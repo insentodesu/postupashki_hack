@@ -69,11 +69,5 @@ export async function parseSalesWorkbook(buffer: ArrayBuffer, secret: string) {
 }
 
 export async function importSales(repo: Repository, orders: OrderInput[]) {
-  let imported = 0; let skipped = 0;
-  for (const order of orders) {
-    if (order.userKey) await repo.ensureUser(order.userKey);
-    const id = await repo.insertOrder(order);
-    if (id == null) skipped += 1; else imported += 1;
-  }
-  return { imported, skipped };
+  return repo.insertOrders(orders);
 }

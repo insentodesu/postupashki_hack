@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { normalizeSalesRows } from "@/lib/measurement/import-sales";
+import { MemoryRepository } from "@/lib/db/repository";
+import { importSales, normalizeSalesRows } from "@/lib/measurement/import-sales";
+
+class CountingRepository extends MemoryRepository {
+  batchCalls = 0;
+  singleCalls = 0;
+
+  override async insertOrders(orders: Parameters<MemoryRepository["insertOrders"]>[0]) {
+    this.batchCalls += 1;
+    return super.insertOrders(orders);
+  }
+
+  override async insertOrder(order: Parameters<MemoryRepository["insertOrder"]>[0]) {
+    this.singleCalls += 1;
+    return super.insertOrder(order);
+  }
+}
 
 describe("Excel sales import", () => {
   it("accepts Russian headers and bundles same student and timestamp", async () => {
@@ -16,5 +32,17 @@ describe("Excel sales import", () => {
   it("marks a single line as high confidence", async () => {
     const [order] = await normalizeSalesRows([{ student_id: "s1", amount: 5000, course: "Math", ts: "2026-09-10T10:00:00Z" }], "secret");
     expect(order).toMatchObject({ reconstructionRule: "single_line", orderConfidence: "high" });
+  });
+
+  it("writes imported orders through one batch repository operation", async () => {
+    const repository = new CountingRepository();
+    const orders = await normalizeSalesRows([
+      { student_id: "s1", amount: 5000, course: "Math", ts: "2026-09-10T10:00:00Z" },
+      { student_id: "s2", amount: 7000, course: "Python", ts: "2026-09-10T11:00:00Z" },
+    ], "secret");
+
+    await expect(importSales(repository, orders)).resolves.toEqual({ imported: 2, skipped: 0 });
+    expect(repository.batchCalls).toBe(1);
+    expect(repository.singleCalls).toBe(0);
   });
 });
