@@ -3,13 +3,17 @@ import hmac
 import os
 import secrets
 
-_HASH_SECRET = os.environ.get("USER_HASH_SECRET", "dev-secret-change-me").encode()
+def _hash_secret() -> bytes:
+    secret = os.environ.get("USER_HASH_SECRET", "").strip()
+    if not secret:
+        raise RuntimeError("USER_HASH_SECRET is required")
+    return secret.encode()
 
 
 def user_key_from_telegram_id(telegram_id) -> str:
     """HMAC-SHA256 от telegram_id. Реальный PII в аналитике не хранится."""
     msg = str(telegram_id).encode()
-    return hmac.new(_HASH_SECRET, msg, hashlib.sha256).hexdigest()[:32]
+    return hmac.new(_hash_secret(), msg, hashlib.sha256).hexdigest()[:32]
 
 
 def new_tracking_token(prefix: str = "p") -> str:
