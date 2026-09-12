@@ -34,6 +34,17 @@ export interface Repository {
 
 const now = () => new Date().toISOString();
 
+export function attributionRows(items: AttributionResult[]) {
+  return items.map((item) => ({
+    order_id: item.orderId,
+    placement_id: item.placementId,
+    attribution_method: item.attributionMethod,
+    confidence: item.confidence,
+    revenue_credit: item.revenueCredit,
+    window_days: item.windowDays,
+  }));
+}
+
 export class MemoryRepository implements Repository {
   private campaigns: Campaign[] = [];
   private placements: Placement[] = [];
@@ -316,7 +327,7 @@ export function postgresRepository(): Repository {
              order_id bigint, placement_id text, attribution_method text, confidence text,
              revenue_credit numeric, window_days integer
            )`,
-          [JSON.stringify(items)],
+          [JSON.stringify(attributionRows(items))],
         );
         await client.query("COMMIT");
       } catch (error) {

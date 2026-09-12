@@ -1,7 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { MemoryRepository } from "@/lib/db/repository";
+import { MemoryRepository, attributionRows } from "@/lib/db/repository";
 
 describe("measurement repository contract", () => {
+  it("serializes attribution fields for the Postgres batch insert", () => {
+    expect(attributionRows([{
+      orderId: 7,
+      placementId: "placement",
+      attributionMethod: "deterministic",
+      confidence: "deterministic",
+      revenueCredit: 20_000,
+      windowDays: 30,
+    }])).toEqual([{
+      order_id: 7,
+      placement_id: "placement",
+      attribution_method: "deterministic",
+      confidence: "deterministic",
+      revenue_credit: 20_000,
+      window_days: 30,
+    }]);
+  });
+
   it("persists the complete measurement path idempotently", async () => {
     const repository = new MemoryRepository();
     await repository.createCampaign({
